@@ -4,6 +4,8 @@
 
 # Rubber Ducking
 
+https://github.com/user-attachments/assets/0c397679-b372-4bda-be8e-638ab7b99852
+
 It's a Duck that helps you out!
 
 Basically is a method of debugging code by articulating a problem in spoken or written natural language [more info](https://en.wikipedia.org/wiki/Rubber_duck_debugging).
