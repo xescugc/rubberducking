@@ -25,3 +25,8 @@ func (ac *ActionDispatcher) AddMessage(m string) {
 	ama := NewAddMessage(m)
 	ac.Dispatch(ama)
 }
+
+func (ac *ActionDispatcher) TPS() {
+	tpsa := NewTPS()
+	ac.Dispatch(tpsa)
+}
