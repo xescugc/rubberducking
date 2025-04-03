@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"log"
+	"time"
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
@@ -90,6 +91,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	state := g.Store.GetState()
 
 	g.AD.TPS()
+
+	if time.Now().Sub(state.WokeUpAt) > state.WokeUpTimouet {
+		return
+	}
 
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(state.Scale, state.Scale)
