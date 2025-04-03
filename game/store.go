@@ -2,6 +2,7 @@ package game
 
 import (
 	"sync"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/solarlune/resolv"
@@ -17,7 +18,9 @@ type Store struct {
 type State struct {
 	Avatar *resolv.ConvexPolygon
 
-	Message string
+	Message          string
+	MessageCreatedAt time.Time
+	MessageTimeout   time.Duration
 
 	Scale float64
 }
@@ -38,9 +41,11 @@ func NewStore(d *flux.Dispatcher[*Action]) *Store {
 	// NOTE: We are not using SetScale as it does not scale correctly
 	// in the render side
 	//a.SetScale(scale, scale)
+
 	s.ReduceStore = flux.NewReduceStore(d, s.Reduce, State{
-		Avatar: a,
-		Scale:  float64(scale),
+		Avatar:         a,
+		Scale:          float64(scale),
+		MessageTimeout: time.Second * 10,
 	})
 
 	return s
@@ -48,10 +53,17 @@ func NewStore(d *flux.Dispatcher[*Action]) *Store {
 
 func (s *Store) Reduce(state State, act *Action) State {
 	switch act.Type {
+	case TPS:
+		// Remove the message if it has been display long enough
+		if state.Message != "" && time.Now().Sub(state.MessageCreatedAt) > state.MessageTimeout {
+			state.Message = ""
+			state.MessageCreatedAt = time.Time{}
+		}
 	case DragAvatar:
 		state.Avatar.SetPosition(float64(act.DragAvatar.X), float64(act.DragAvatar.Y))
 	case AddMessage:
 		state.Message = act.AddMessage.Message
+		state.MessageCreatedAt = time.Now()
 	}
 
 	return state

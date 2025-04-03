@@ -53,6 +53,8 @@ func NewGame(d *flux.Dispatcher[*Action], port string, verbose bool) *Game {
 
 	g.buildUI()
 
+	g.AD.AddMessage("Quack!")
+
 	return g
 }
 
@@ -86,6 +88,8 @@ func (g *Game) Update() error {
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	state := g.Store.GetState()
+
+	g.AD.TPS()
 
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(state.Scale, state.Scale)
