@@ -28,7 +28,7 @@ type State struct {
 	Scale float64
 }
 
-func NewStore(d *flux.Dispatcher[*Action]) *Store {
+func NewStore(d *flux.Dispatcher[*Action], mto, wuto time.Duration) *Store {
 	s := &Store{}
 
 	msw, msh := ebiten.Monitor().Size()
@@ -50,10 +50,9 @@ func NewStore(d *flux.Dispatcher[*Action]) *Store {
 
 		Scale: float64(scale),
 
-		MessageTimeout: time.Second * 10,
+		MessageTimeout: mto,
 
-		WokeUpAt:      time.Now(),
-		WokeUpTimouet: time.Second * 15,
+		WokeUpTimouet: wuto,
 	})
 
 	return s
