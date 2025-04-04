@@ -46,7 +46,7 @@ type Game struct {
 
 func NewGame(d *flux.Dispatcher[*Action], port string, verbose bool) *Game {
 	g := &Game{
-		Store: NewStore(d),
+		Store: NewStore(d, time.Second*10, time.Second*15),
 		AD:    NewActionDispatcher(d),
 	}
 
