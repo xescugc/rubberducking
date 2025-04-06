@@ -1,4 +1,4 @@
-package game
+package main
 
 import "github.com/xescugc/go-flux/v2"
 

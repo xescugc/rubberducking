@@ -1,4 +1,4 @@
-package game
+package main
 
 import (
 	"github.com/ebitenui/ebitenui/image"
