@@ -13,3 +13,6 @@ var SpeechBallon_PNG []byte
 
 //go:embed munro.ttf
 var Munro_TTF []byte
+
+//go:embed game
+var Game []byte

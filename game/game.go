@@ -1,9 +1,9 @@
-package game
+package main
 
 import (
 	"bytes"
 	"image"
-	"log"
+	"os"
 	"time"
 
 	"github.com/ebitenui/ebitenui"
@@ -12,6 +12,7 @@ import (
 	"github.com/solarlune/resolv"
 	"github.com/xescugc/go-flux/v2"
 	"github.com/xescugc/rubberducking/assets"
+	"github.com/xescugc/rubberducking/log"
 )
 
 var (
@@ -22,13 +23,15 @@ var (
 func init() {
 	di, _, err := image.Decode(bytes.NewReader(assets.Duck_PNG))
 	if err != nil {
-		log.Fatal(err)
+		log.Logger.Error("Error on Decoding Duck_PNG", "err", err)
+		os.Exit(1)
 	}
 	duckImg = ebiten.NewImageFromImage(ebiten.NewImageFromImage(di).SubImage(image.Rect(0, 0, 16, 16)))
 
 	sbi, _, err := image.Decode(bytes.NewReader(assets.SpeechBallon_PNG))
 	if err != nil {
-		log.Fatal(err)
+		log.Logger.Error("Error on Decoding SpeechBallon_PNG", "err", err)
+		os.Exit(1)
 	}
 	speechBallonImg = ebiten.NewImageFromImage(sbi)
 }
@@ -44,23 +47,23 @@ type Game struct {
 	speechBallonTxt *widget.Text
 }
 
-func NewGame(d *flux.Dispatcher[*Action], port string, verbose bool) *Game {
+func NewGame(d *flux.Dispatcher[*Action], s *Store, ad *ActionDispatcher) *Game {
 	g := &Game{
-		Store: NewStore(d, time.Second*10, time.Second*15),
-		AD:    NewActionDispatcher(d),
+		Store: s,
+		AD:    ad,
 	}
 
-	go g.startHttpServer(port, verbose)
-
 	g.buildUI()
-
-	g.AD.AddMessage("Quack!")
 
 	return g
 }
 
 func (g *Game) Update() error {
 	state := g.Store.GetState()
+
+	if time.Now().Sub(state.WokeUpAt) > state.WokeUpTimouet {
+		return ebiten.Termination
+	}
 
 	if !ebiten.IsWindowMousePassthrough() {
 		ebiten.SetWindowMousePassthrough(true)
@@ -92,7 +95,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	g.AD.TPS()
 
-	if time.Now().Sub(state.WokeUpAt) > state.WokeUpTimouet {
+	if state.Message == "" {
 		return
 	}
 

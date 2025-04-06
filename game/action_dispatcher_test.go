@@ -1,4 +1,4 @@
-package game_test
+package main
 
 import (
 	"testing"
@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xescugc/go-flux/v2"
-	"github.com/xescugc/rubberducking/game"
 	"go.uber.org/mock/gomock"
 )
 
@@ -15,8 +14,8 @@ var (
 	messageTimeout = time.Millisecond
 	wokeUpTimouet  = time.Millisecond * 2
 
-	testState = func() game.State {
-		return game.State{
+	testState = func() State {
+		return State{
 			MessageTimeout: messageTimeout,
 			WokeUpTimouet:  wokeUpTimouet,
 		}
@@ -28,7 +27,10 @@ func TestEmpty(t *testing.T) {
 	defer ctrl.Finish()
 
 	_, as := initStore()
-	EqualState(t, testState(), as.GetState())
+	require.NotEqual(t, time.Time{}, as.GetState().WokeUpAt)
+	es := testState()
+	es.WokeUpAt = as.GetState().WokeUpAt
+	EqualState(t, es, as.GetState())
 }
 
 func TestDragAvatar(t *testing.T) {
@@ -44,6 +46,7 @@ func TestDragAvatar(t *testing.T) {
 		es := testState()
 		auxA.SetPosition(1., 2.)
 		es.Avatar = &auxA
+		es.WokeUpAt = as.GetState().WokeUpAt
 
 		EqualState(t, es, as.GetState())
 	})
@@ -59,7 +62,6 @@ func TestAddMessage(t *testing.T) {
 		ad, as := initStore()
 
 		require.Equal(t, time.Time{}, as.GetState().MessageCreatedAt)
-		require.Equal(t, time.Time{}, as.GetState().WokeUpAt)
 
 		ad.AddMessage(msg)
 
@@ -96,13 +98,13 @@ func TestTPS(t *testing.T) {
 	})
 }
 
-func initStore() (*game.ActionDispatcher, *game.Store) {
-	d := flux.NewDispatcher[*game.Action]()
-	s := game.NewStore(d, messageTimeout, wokeUpTimouet)
-	return game.NewActionDispatcher(d), s
+func initStore() (*ActionDispatcher, *Store) {
+	d := flux.NewDispatcher[*Action]()
+	s := NewStore(d, messageTimeout, wokeUpTimouet)
+	return NewActionDispatcher(d), s
 }
 
-func EqualState(t *testing.T, e, a game.State) {
+func EqualState(t *testing.T, e, a State) {
 	t.Helper()
 
 	// This values are set during the initialization of the store

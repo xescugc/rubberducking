@@ -1,4 +1,4 @@
-package game
+package main
 
 import (
 	"sync"
@@ -52,6 +52,7 @@ func NewStore(d *flux.Dispatcher[*Action], mto, wuto time.Duration) *Store {
 
 		MessageTimeout: mto,
 
+		WokeUpAt:      time.Now(),
 		WokeUpTimouet: wuto,
 	})
 
