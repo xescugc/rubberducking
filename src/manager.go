@@ -22,6 +22,8 @@ import (
 	"github.com/xescugc/rubberducking/assets"
 	"github.com/xescugc/rubberducking/log"
 	"go.uber.org/atomic"
+	"golang.design/x/hotkey"
+	"golang.design/x/hotkey/mainthread"
 )
 
 const (
@@ -63,6 +65,9 @@ func Manager(ctx context.Context, fs afero.Fs, v bool) error {
 	if err != nil {
 		return fmt.Errorf("could not initialize FS")
 	}
+
+	go mainthread.Init(hotkeysFn(ctx, fs))
+
 	tmpdir, err := afero.TempDir(fs, "", AppName)
 	if err != nil {
 		return fmt.Errorf("failed to initialize temp dir: %w", err)
@@ -291,4 +296,35 @@ func getFreePort() (port int, err error) {
 		}
 	}
 	return
+}
+
+func hotkeysFn(ctx context.Context, fs afero.Fs) func() {
+	return func() {
+		hk := hotkey.New([]hotkey.Modifier{hotkey.Mod4, hotkey.ModShift}, hotkey.KeyD)
+		err := hk.Register()
+		if err != nil {
+			log.Logger.Error("hotkey: failed to register hotkey", "error", err)
+			return
+		}
+		for {
+			select {
+			case <-ctx.Done():
+				hk.Unregister()
+				return
+			case <-hk.Keydown():
+				log.Logger.Info("hotkey: Keydown", "key", hk)
+			case <-hk.Keyup():
+				log.Logger.Info("hotkey: Keyup", "key", hk)
+				if !isGameRunning.Load() {
+					err = SendMessage(ctx, fs, "Quack!")
+				} else {
+					err = SendMessage(ctx, fs, "")
+				}
+				if err != nil {
+					log.Logger.Error("hotkey: failed to send message", "error", err)
+					return
+				}
+			}
+		}
+	}
 }

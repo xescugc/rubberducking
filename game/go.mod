@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/hajimehoshi/ebiten/v2 v2.8.7
 	github.com/solarlune/resolv v0.8.1
+	github.com/spf13/afero v1.14.0
 	github.com/stretchr/testify v1.10.0
 	github.com/xescugc/go-flux/v2 v2.0.0
 	github.com/xescugc/rubberducking v0.0.0-20250404012350-dc34b453f601
@@ -26,8 +27,9 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	github.com/spf13/afero v1.14.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
+	golang.design/x/hotkey v0.4.1 // indirect
+	golang.design/x/mainthread v0.3.0 // indirect
 	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa // indirect
 	golang.org/x/image v0.20.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
