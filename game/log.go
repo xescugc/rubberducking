@@ -7,24 +7,25 @@ import (
 	"log/slog"
 
 	"github.com/adrg/xdg"
+	"github.com/xescugc/rubberducking/src"
 )
 
 var (
-	AppName = "rubberducking"
-
 	Logger *slog.Logger
 
 	Level = new(slog.LevelVar)
 
-	logFilePath = path.Join(xdg.StateHome, AppName, "game.log")
+	logFilePath = path.Join(xdg.StateHome, src.AppName, "game.log")
 
 	logWriter = os.Stdout
 )
 
 func initLog() {
-	Level.Set(slog.LevelInfo)
+	if Logger == nil {
+		Level.Set(slog.LevelInfo)
 
-	Logger = slog.New(slog.NewTextHandler(logWriter, &slog.HandlerOptions{
-		Level: Level,
-	}))
+		Logger = slog.New(slog.NewTextHandler(logWriter, &slog.HandlerOptions{
+			Level: Level,
+		}))
+	}
 }

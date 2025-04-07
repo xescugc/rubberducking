@@ -61,7 +61,7 @@ func NewGame(d *flux.Dispatcher[*Action], s *Store, ad *ActionDispatcher) *Game 
 func (g *Game) Update() error {
 	state := g.Store.GetState()
 
-	if time.Now().Sub(state.WokeUpAt) > state.WokeUpTimouet {
+	if time.Now().Sub(state.WokeUpAt) > state.WokeUpTimeout {
 		return ebiten.Termination
 	}
 
