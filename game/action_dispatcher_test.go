@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xescugc/go-flux/v2"
@@ -17,7 +18,7 @@ var (
 	testState = func() State {
 		return State{
 			MessageTimeout: messageTimeout,
-			WokeUpTimouet:  wokeUpTimouet,
+			WokeUpTimeout:  wokeUpTimouet,
 		}
 	}
 )
@@ -100,7 +101,7 @@ func TestTPS(t *testing.T) {
 
 func initStore() (*ActionDispatcher, *Store) {
 	d := flux.NewDispatcher[*Action]()
-	s := NewStore(d, messageTimeout, wokeUpTimouet)
+	s := NewStore(d, afero.NewMemMapFs(), messageTimeout, wokeUpTimouet)
 	return NewActionDispatcher(d), s
 }
 

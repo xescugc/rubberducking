@@ -75,7 +75,7 @@ func Manager(ctx context.Context, fs afero.Fs, v bool) error {
 	ctx, cfn := context.WithCancel(ctx)
 	cleanup := func() {
 		fs.RemoveAll(tmpdir)
-		fs.RemoveAll(filepath.Dir(dataFile))
+		fs.Remove(dataFile)
 		cfn()
 		select {
 		case <-gameStarted:
@@ -230,12 +230,12 @@ func startGame(ctx context.Context, managerURL, gamePath string, firstRun, v boo
 			stderr, err := cmd.StderrPipe()
 			if err != nil {
 				log.Logger.Error("Failed to connect to StderrPipe", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("Failed to connect to StderrPipe: %w", err)
 			}
 			stdout, err := cmd.StdoutPipe()
 			if err != nil {
 				log.Logger.Error("Failed to connect to StdoutPipe", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("Failed to connect to StdoutPipe: %w", err)
 			}
 
 			gamePort.Store(strconv.Itoa(port))
