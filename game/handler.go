@@ -40,6 +40,7 @@ func (g *Game) createMessageHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(src.ErrorResponse{Error: err.Error()})
 		return
 	}
+	Logger.Info("Sending message to manager", "msg", b.Message)
 
 	g.AD.AddMessage(b.Message)
 }

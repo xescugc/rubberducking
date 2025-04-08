@@ -32,13 +32,13 @@ const (
 
 var (
 	// This 2 amoics are only available on the main run, not on the subcommands
-	isGameRunning   atomic.Bool
-	shouldGameStart atomic.Bool
-	gamePort        atomic.String
+	isGameRunning atomic.Bool
+	gamePort      atomic.String
 
 	dataFile = path.Join(xdg.DataHome, AppName, "data.json")
 
-	gameStarted = make(chan struct{})
+	gameStarted     = make(chan struct{})
+	shouldGameStart = make(chan struct{})
 )
 
 func initFs(fs afero.Fs) error {
@@ -125,7 +125,7 @@ func Manager(ctx context.Context, fs afero.Fs, v bool) error {
 
 	go startHandler(ssp, v)
 
-	err = startGame(ctx, data.ManagerURL, gamepath, true, v)
+	err = startGame(ctx, data.ManagerURL, gamepath, v)
 	if err != nil {
 		return fmt.Errorf("failed to start game: %w", err)
 	}
@@ -164,17 +164,17 @@ func startHandler(sp string, v bool) {
 		return
 	})
 	hmux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		//// This handler basically proxies any request to the Game if it's running
-		//// if it's not running then it waits for it to run before proxing the request
+		// This handler basically proxies any request to the Game if it's running
+		// if it's not running then it waits for it to run before proxing the request
 		if !isGameRunning.Load() {
-			log.Logger.Info("Game is not running, setting 'shouldGameStart' to 'true'")
-			shouldGameStart.Store(true)
+			log.Logger.Info("Game is not running, pushing to channel 'shouldGameStart'")
+			shouldGameStart <- struct{}{}
+
 			log.Logger.Info("Waiting for the Game to start on 'gameStarted'")
 			<-gameStarted
-			shouldGameStart.Store(false)
 		}
-		// TODO: Let the Game Ping back the manager when it's up
-		log.Logger.Info("Game is running", "isGameRunning", isGameRunning.Load(), "shouldGameStart", shouldGameStart.Load())
+
+		log.Logger.Info("Game is running", "isGameRunning", isGameRunning.Load())
 		proxyReq := buildProxyRequest(req)
 		resp, err := http.DefaultClient.Do(proxyReq)
 		if err != nil {
@@ -211,14 +211,13 @@ func startHandler(sp string, v bool) {
 	}
 }
 
-func startGame(ctx context.Context, managerURL, gamePath string, firstRun, v bool) error {
-	select {
-	case <-ctx.Done():
-		return nil
-	default:
-		log.Logger.Debug("Start game", "shouldGameStart", shouldGameStart.Load(), "firstRun", firstRun)
-		var exiterdTheGame bool
-		if (shouldGameStart.Load() || firstRun) && !isGameRunning.Load() {
+func startGame(ctx context.Context, managerURL, gamePath string, v bool) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-shouldGameStart:
+			log.Logger.Debug("Start game")
 			port, err := getFreePort()
 			if err != nil {
 				return err
@@ -251,12 +250,6 @@ func startGame(ctx context.Context, managerURL, gamePath string, firstRun, v boo
 				return fmt.Errorf("failed to run game")
 			}
 
-			// As the first run we need to push the gameStarted
-			// as the game was not requested to start so we don't block
-			if firstRun {
-				<-gameStarted
-			}
-
 			isGameRunning.Store(true)
 
 			errs, _ := io.ReadAll(stderr)
@@ -268,21 +261,13 @@ func startGame(ctx context.Context, managerURL, gamePath string, firstRun, v boo
 				log.Logger.Error("Failed to Wait for cmd", "error", err)
 			}
 
+			isGameRunning.Store(false)
+
 			log.Logger.Info("Game ended")
 			if v {
 				log.Logger.Info("Game output", "CMD", cmd.String(), "STDOUT", outs, "STDERR", errs)
 			}
-
-			isGameRunning.Store(false)
-			exiterdTheGame = true
 		}
-
-		if exiterdTheGame {
-			log.Logger.Info("Sleeping")
-		}
-		time.Sleep(time.Second / 60)
-
-		return startGame(ctx, managerURL, gamePath, false, v)
 	}
 }
 

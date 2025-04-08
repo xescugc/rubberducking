@@ -72,7 +72,6 @@ func (s *State) MarshalJSON() ([]byte, error) {
 		},
 		Alias: (*Alias)(s),
 	}
-	Logger.Info("Before sending", "struct", ms)
 	return json.Marshal(ms)
 }
 
