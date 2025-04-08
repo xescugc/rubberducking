@@ -29,7 +29,7 @@ func TestStateJSON(t *testing.T) {
 		b, err := json.Marshal(&state)
 		require.NoError(t, err)
 
-		assert.Equal(t, b, []byte(`{"message_timout":10000000000,"woke_up_timeout":15000000000,"scale":10,"avatar":{"x":10,"y":10,"w":5,"h":5}}`))
+		assert.Equal(t, b, []byte(`{"message_timeout":10000000000,"woke_up_timeout":15000000000,"scale":10,"avatar":{"x":10,"y":10,"w":5,"h":5}}`))
 	})
 	t.Run("Unmarshal", func(t *testing.T) {
 		b, err := json.Marshal(&state)

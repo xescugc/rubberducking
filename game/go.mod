@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/adrg/xdg v0.5.3
+	github.com/davecgh/go-spew v1.1.1
 	github.com/ebitenui/ebitenui v0.6.1
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
@@ -17,7 +18,6 @@ require (
 )
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/ebitengine/gomobile v0.0.0-20240911145611-4856209ac325 // indirect
 	github.com/ebitengine/hideconsole v1.0.0 // indirect
 	github.com/ebitengine/purego v0.8.0 // indirect

@@ -19,6 +19,7 @@ var (
 		return State{
 			MessageTimeout: messageTimeout,
 			WokeUpTimeout:  wokeUpTimouet,
+			Messages:       make([]Message, 0, 0),
 		}
 	}
 )
@@ -62,19 +63,38 @@ func TestAddMessage(t *testing.T) {
 
 		ad, as := initStore()
 
-		require.Equal(t, time.Time{}, as.GetState().MessageCreatedAt)
+		require.Len(t, as.GetState().Messages, 0)
 
 		ad.AddMessage(msg)
 
-		require.NotEqual(t, time.Time{}, as.GetState().MessageCreatedAt)
+		require.Len(t, as.GetState().Messages, 1)
+		require.NotEqual(t, time.Time{}, as.GetState().MessageDisplayedAt)
 		require.NotEqual(t, time.Time{}, as.GetState().WokeUpAt)
 
 		es := testState()
-		es.Message = msg
-		es.MessageCreatedAt = as.GetState().MessageCreatedAt
+		es.Messages = []Message{
+			Message{
+				Text: msg,
+			},
+		}
+		es.MessageDisplayedAt = as.GetState().MessageDisplayedAt
 		es.WokeUpAt = as.GetState().WokeUpAt
 
 		EqualState(t, es, as.GetState())
+
+		t.Run("AddAnother", func(t *testing.T) {
+			msg2 := "Quack!2"
+			ad.AddMessage(msg2)
+			es.Messages = []Message{
+				Message{
+					Text: msg,
+				},
+				Message{
+					Text: msg2,
+				},
+			}
+			EqualState(t, es, as.GetState())
+		})
 	})
 }
 
@@ -84,15 +104,24 @@ func TestTPS(t *testing.T) {
 		defer ctrl.Finish()
 
 		msg := "Quack!"
+		msg2 := "Quack!2"
 
 		ad, as := initStore()
 		ad.AddMessage(msg)
+		ad.AddMessage(msg2)
 
 		time.Sleep(messageTimeout)
 
 		ad.TPS()
 
 		es := testState()
+
+		es.Messages = []Message{
+			Message{
+				Text: msg2,
+			},
+		}
+		es.MessageDisplayedAt = as.GetState().MessageDisplayedAt
 		es.WokeUpAt = as.GetState().WokeUpAt
 
 		EqualState(t, es, as.GetState())
