@@ -95,7 +95,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	g.AD.TPS()
 
-	if state.Message == "" {
+	if _, ok := g.Store.GetMessage(); !ok {
 		return
 	}
 
@@ -104,8 +104,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	op.GeoM.Translate(state.Avatar.Bounds().Min.X, state.Avatar.Bounds().Min.Y)
 	screen.DrawImage(duckImg.(*ebiten.Image), op)
 
-	if state.Message != "" {
-		g.speechBallonTxt.Label = state.Message
+	if m, ok := g.Store.GetMessage(); ok {
+		g.speechBallonTxt.Label = m.Text
 		g.speechBallonRC.BackgroundImage = LoadImageNineSlice(ScaleImage(speechBallonImg.(*ebiten.Image), int(state.Scale)), 1, 1)
 
 		b := state.Avatar.Bounds()

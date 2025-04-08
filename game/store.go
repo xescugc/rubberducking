@@ -21,14 +21,18 @@ type Store struct {
 type State struct {
 	Avatar *resolv.ConvexPolygon `json:"-"`
 
-	Message          string        `json:"-""`
-	MessageCreatedAt time.Time     `json:"-"`
-	MessageTimeout   time.Duration `json:"message_timout"`
+	Messages           []Message     `json:"-"`
+	MessageDisplayedAt time.Time     `json:"-"`
+	MessageTimeout     time.Duration `json:"message_timeout"`
 
 	WokeUpAt      time.Time     `json:"-"`
 	WokeUpTimeout time.Duration `json:"woke_up_timeout"`
 
 	Scale float64 `json:"scale"`
+}
+
+type Message struct {
+	Text string
 }
 
 type AvatarJSON struct {
@@ -104,6 +108,7 @@ func NewStore(d *flux.Dispatcher[*Action], fs afero.Fs, mto, wuto time.Duration)
 			WokeUpTimeout: wuto,
 		}
 	}
+	state.Messages = make([]Message, 0, 0)
 	// NOTE: We are not using SetScale as it does not scale correctly
 	// in the render side
 	//a.SetScale(scale, scale)
@@ -113,6 +118,18 @@ func NewStore(d *flux.Dispatcher[*Action], fs afero.Fs, mto, wuto time.Duration)
 	return s
 }
 
+func (s *Store) GetMessage() (Message, bool) {
+	s.mxStore.Lock()
+	defer s.mxStore.Unlock()
+
+	state := s.GetState()
+	if len(state.Messages) == 0 {
+		return Message{}, false
+	}
+
+	return state.Messages[0], true
+}
+
 func (s *Store) Reduce(state State, act *Action) State {
 	switch act.Type {
 	case TPS:
@@ -120,9 +137,14 @@ func (s *Store) Reduce(state State, act *Action) State {
 		defer s.mxStore.Unlock()
 
 		// Remove the message if it has been display long enough
-		if state.Message != "" && time.Now().Sub(state.MessageCreatedAt) > state.MessageTimeout {
-			state.Message = ""
-			state.MessageCreatedAt = time.Time{}
+		if len(state.Messages) > 0 && time.Now().Sub(state.MessageDisplayedAt) > state.MessageTimeout {
+			state.Messages = state.Messages[1:]
+			if len(state.Messages) != 0 {
+				state.MessageDisplayedAt = time.Now()
+				state.WokeUpAt = time.Now()
+			} else {
+				state.MessageDisplayedAt = time.Time{}
+			}
 		}
 	case DragAvatar:
 		s.mxStore.Lock()
@@ -133,10 +155,14 @@ func (s *Store) Reduce(state State, act *Action) State {
 		s.mxStore.Lock()
 		defer s.mxStore.Unlock()
 
-		state.Message = act.AddMessage.Message
-		state.MessageCreatedAt = time.Now()
+		if len(state.Messages) == 0 {
+			state.MessageDisplayedAt = time.Now()
+			state.WokeUpAt = time.Now()
+		}
 
-		state.WokeUpAt = time.Now()
+		state.Messages = append(state.Messages, Message{
+			Text: act.AddMessage.Message,
+		})
 	}
 
 	return state
