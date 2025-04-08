@@ -107,14 +107,32 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if state.Message != "" {
 		g.speechBallonTxt.Label = state.Message
 		g.speechBallonRC.BackgroundImage = LoadImageNineSlice(ScaleImage(speechBallonImg.(*ebiten.Image), int(state.Scale)), 1, 1)
+
 		b := state.Avatar.Bounds()
+		msw, msh := ebiten.Monitor().Size()
 
 		//Get the preferred size of the content
 		x, y := g.speechBallonW.Contents.PreferredSize()
+
+		endx := int(b.Min.X)
+		endy := int(b.Min.Y) - y
+
+		if endx+x > msw {
+			endx -= (endx + x) - msw
+		} else if endx < 0 {
+			endx = 0
+		}
+
+		if endy+y > msh {
+			endy -= (endy + y) - msh
+		} else if endy < 0 {
+			endy = 0
+		}
+
 		//Create a rect with the preferred size of the content
 		r := image.Rect(0, 0, x, y)
 		//Use the Add method to move the window to the specified point
-		r = r.Add(image.Point{int(b.Min.X), int(b.Min.Y) - y})
+		r = r.Add(image.Point{endx, endy})
 		//Set the windows location to the rect.
 		g.speechBallonW.SetLocation(r)
 		//Add the window to the UI.
