@@ -17,9 +17,11 @@ var (
 
 	testState = func() State {
 		return State{
-			MessageTimeout: messageTimeout,
-			WokeUpTimeout:  wokeUpTimouet,
-			Messages:       make([]Message, 0, 0),
+			MessageTimeout:           messageTimeout,
+			WokeUpTimeout:            wokeUpTimouet,
+			Messages:                 make([]Message, 0, 0),
+			MessageMaxLineCharacters: DefaultMessageMaxLineCharacters,
+			MessageMaxLines:          DefaultMessageMaxLines,
 		}
 	}
 )

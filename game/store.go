@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -10,6 +12,11 @@ import (
 	"github.com/solarlune/resolv"
 	"github.com/spf13/afero"
 	"github.com/xescugc/go-flux/v2"
+)
+
+const (
+	DefaultMessageMaxLineCharacters = 40
+	DefaultMessageMaxLines          = 20
 )
 
 type Store struct {
@@ -21,9 +28,14 @@ type Store struct {
 type State struct {
 	Avatar *resolv.ConvexPolygon `json:"-"`
 
-	Messages           []Message     `json:"-"`
-	MessageDisplayedAt time.Time     `json:"-"`
-	MessageTimeout     time.Duration `json:"message_timeout"`
+	Messages           []Message `json:"-"`
+	MessageDisplayedAt time.Time `json:"-"`
+
+	MessageTimeout time.Duration `json:"message_timeout"`
+	// MessageMaxLineCharacter is the max number characters in one line
+	MessageMaxLineCharacters int `json:"message_max_line_characters"`
+	// MessageMaxLines is the max number of lines
+	MessageMaxLines int `json:"message_max_lines"`
 
 	WokeUpAt      time.Time     `json:"-"`
 	WokeUpTimeout time.Duration `json:"woke_up_timeout"`
@@ -108,6 +120,10 @@ func NewStore(d *flux.Dispatcher[*Action], fs afero.Fs, mto, wuto time.Duration)
 			WokeUpTimeout: wuto,
 		}
 	}
+
+	state.MessageMaxLineCharacters = DefaultMessageMaxLineCharacters
+	state.MessageMaxLines = DefaultMessageMaxLines
+
 	state.Messages = make([]Message, 0, 0)
 	// NOTE: We are not using SetScale as it does not scale correctly
 	// in the render side
@@ -161,7 +177,7 @@ func (s *Store) Reduce(state State, act *Action) State {
 		}
 
 		state.Messages = append(state.Messages, Message{
-			Text: act.AddMessage.Message,
+			Text: truncateMessage(act.AddMessage.Message, state.MessageMaxLineCharacters, state.MessageMaxLines),
 		})
 	}
 
@@ -188,4 +204,68 @@ func initialState(fs afero.Fs) *State {
 	}
 
 	return &state
+}
+
+func truncateMessage(msg string, mlc, ml int) string {
+	if len(msg) < mlc {
+		return msg
+	}
+	messages := strings.Split(msg, "\n")
+	for i, m := range messages {
+		if len(m) < mlc {
+			continue
+		}
+
+		nms := make([]string, 1, 1)
+		ws := strings.Split(m, " ")
+		for ii := 0; ii < len(ws); ii++ {
+			ci := len(nms) - 1
+			cv := nms[ci]
+			w := ws[ii]
+			// If adding the new w(word) to the
+			// line makes it too long
+			if len(cv)+len(w) > mlc {
+				if cv == "" {
+					// This means that is a string longer than the mlc so we have to break it
+					for len(w) > mlc {
+						ci = len(nms) - 1
+						cv = nms[ci]
+
+						// We add '-' at the end so it's clear
+						ns := w[0:mlc-1] + "-"
+						if len(cv) == mlc {
+							nms = append(nms, ns)
+						} else {
+							nms[ci] = ns
+						}
+
+						w = w[mlc-1:]
+						if len(w) < mlc {
+							nms = append(nms, w)
+						}
+					}
+				} else {
+					// We add a new line and move the 'w' to the next index
+					// so when it goes again it enters the 'cv==""'
+					nms = append(nms, "")
+					ws = slices.Insert(ws, i+1, w)
+				}
+				continue
+			}
+			if cv == "" {
+				nms[ci] = w
+			} else {
+				nms[ci] = cv + " " + w
+			}
+		}
+
+		messages[i] = strings.Join(nms, "\n")
+	}
+
+	msg = strings.Join(messages, "\n")
+	messages = strings.Split(msg, "\n")
+	if len(messages) > ml {
+		messages = append(messages[:ml], "...")
+	}
+	return strings.Join(messages, "\n")
 }
