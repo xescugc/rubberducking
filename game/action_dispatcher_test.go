@@ -100,6 +100,99 @@ func TestAddMessage(t *testing.T) {
 	})
 }
 
+func TestMenuOpen(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		ad, as := initStore()
+
+		ad.MenuOpen(true)
+
+		es := testState()
+		es.WokeUpAt = as.GetState().WokeUpAt
+		es.MenuOpen = true
+
+		EqualState(t, es, as.GetState())
+	})
+}
+
+func TestSetFocus(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		t.Run("WithNoMessages", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			ad, as := initStore()
+
+			ad.SetFocusMode(true)
+
+			es := testState()
+			es.WokeUpAt = as.GetState().WokeUpAt
+			es.FocusMode = true
+
+			EqualState(t, es, as.GetState())
+		})
+		t.Run("WithMessages", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			var (
+				msg1 = "msg1"
+				msg2 = "msg2"
+			)
+
+			ad, as := initStore()
+
+			ad.AddMessage(msg1)
+			ad.AddMessage(msg2)
+			ad.SetFocusMode(true)
+
+			es := testState()
+			es.WokeUpAt = as.GetState().WokeUpAt
+			es.FocusMode = true
+			es.Messages = []Message{
+				Message{
+					Text: msg1,
+				},
+				Message{
+					Text: msg2,
+				},
+			}
+
+			EqualState(t, es, as.GetState())
+
+			t.Run("TPS", func(t *testing.T) {
+				ad.TPS()
+
+				EqualState(t, es, as.GetState())
+
+				t.Run("SetItBackTo'False'", func(t *testing.T) {
+					ad.SetFocusMode(false)
+
+					es.WokeUpAt = as.GetState().WokeUpAt
+					es.MessageDisplayedAt = as.GetState().MessageDisplayedAt
+					es.FocusMode = false
+					EqualState(t, es, as.GetState())
+
+					t.Run("TPS", func(t *testing.T) {
+						time.Sleep(messageTimeout)
+						ad.TPS()
+						es.WokeUpAt = as.GetState().WokeUpAt
+						es.MessageDisplayedAt = as.GetState().MessageDisplayedAt
+						es.Messages = []Message{
+							Message{
+								Text: msg2,
+							},
+						}
+						EqualState(t, es, as.GetState())
+					})
+				})
+			})
+		})
+	})
+}
+
 func TestTPS(t *testing.T) {
 	t.Run("ExpireMessage", func(t *testing.T) {
 		ctrl := gomock.NewController(t)

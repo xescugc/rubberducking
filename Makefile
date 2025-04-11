@@ -15,6 +15,10 @@ run: build-game ## Runs the Duck!
 test: build-game ## Tests the Duck!
 	@go test ./... && cd ./game	&& go test ./...
 
+.PHONY: test-game
+test-game: ## Tests the Duck!
+	@cd ./game	&& go test ./...
+
 .PHONY: build
 build: build-game ## Builds the game
 	@go build ./...

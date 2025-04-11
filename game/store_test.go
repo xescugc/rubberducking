@@ -8,7 +8,41 @@ import (
 	"github.com/solarlune/resolv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
+
+func TestGetMessage(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		t.Run("Normal", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			emsg := "msg"
+
+			ad, as := initStore()
+			ad.AddMessage(emsg)
+
+			msg, ok := as.GetMessage()
+			assert.True(t, ok)
+			assert.Equal(t, Message{Text: emsg}, msg)
+		})
+		t.Run("WithFocusMode", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			emsg := "msg"
+
+			ad, as := initStore()
+			ad.AddMessage(emsg)
+			ad.SetFocusMode(true)
+
+			msg, ok := as.GetMessage()
+			assert.False(t, ok)
+			assert.Equal(t, Message{}, msg)
+		})
+	})
+
+}
 
 func TestStateJSON(t *testing.T) {
 	a := resolv.NewRectangleFromTopLeft(
@@ -29,7 +63,7 @@ func TestStateJSON(t *testing.T) {
 		b, err := json.Marshal(&state)
 		require.NoError(t, err)
 
-		assert.Equal(t, b, []byte(`{"message_timeout":10000000000,"message_max_line_characters":0,"message_max_lines":0,"woke_up_timeout":15000000000,"scale":10,"avatar":{"x":10,"y":10,"w":5,"h":5}}`))
+		assert.Equal(t, b, []byte(`{"message_timeout":10000000000,"message_max_line_characters":0,"message_max_lines":0,"woke_up_timeout":15000000000,"focus_mode":false,"scale":10,"avatar":{"x":10,"y":10,"w":5,"h":5}}`))
 	})
 	t.Run("Unmarshal", func(t *testing.T) {
 		b, err := json.Marshal(&state)
