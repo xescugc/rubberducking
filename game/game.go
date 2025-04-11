@@ -95,7 +95,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	g.AD.TPS()
 
-	if _, ok := g.Store.GetMessage(); !ok {
+	if _, ok := g.Store.GetMessage(); !ok && !g.Store.GetDisplay() {
 		return
 	}
 

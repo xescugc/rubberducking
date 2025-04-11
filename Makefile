@@ -4,6 +4,7 @@ help: ## Show this help
 
 .PHONY: build-game
 build-game: ## Builds the internal game
+	@touch assets/game
 	@cd ./game && go build . && mv game ./../assets
 
 .PHONY: run

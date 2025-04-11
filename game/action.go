@@ -8,6 +8,7 @@ const (
 	DragAvatar Type = iota
 	AddMessage
 	TPS
+	Toggle
 )
 
 type Action struct {
@@ -16,6 +17,7 @@ type Action struct {
 	DragAvatar DragAvatarPayload
 	AddMessage AddMessagePayload
 	TPS        TPSPayload
+	Toggle     TogglePayload
 }
 
 type DragAvatarPayload struct {
@@ -51,5 +53,13 @@ type TPSPayload struct{}
 func NewTPS() *Action {
 	return &Action{
 		Type: TPS,
+	}
+}
+
+type TogglePayload struct{}
+
+func NewToggle() *Action {
+	return &Action{
+		Type: Toggle,
 	}
 }

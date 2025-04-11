@@ -66,8 +66,6 @@ func Manager(ctx context.Context, fs afero.Fs, v bool) error {
 		return fmt.Errorf("could not initialize FS")
 	}
 
-	go mainthread.Init(hotkeysFn(ctx, fs))
-
 	tmpdir, err := afero.TempDir(fs, "", AppName)
 	if err != nil {
 		return fmt.Errorf("failed to initialize temp dir: %w", err)
@@ -118,6 +116,8 @@ func Manager(ctx context.Context, fs afero.Fs, v bool) error {
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
+	go mainthread.Init(hotkeysFn(ctx, data.ManagerURL))
+
 	err = afero.WriteFile(fs, dataFile, b, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write file %q: %w", dataFile, err)
@@ -137,7 +137,7 @@ func buildProxyRequest(req *http.Request) *http.Request {
 	proxyReq := req.Clone(context.Background())
 
 	// create a new url from the raw RequestURI sent by the client
-	u := "http://localhost:" + gamePort.Load() + "/messages"
+	u := "http://localhost:" + gamePort.Load() + proxyReq.RequestURI
 
 	proxyReq.URL, _ = url.Parse(u)
 	proxyReq.RequestURI = ""
@@ -283,7 +283,7 @@ func getFreePort() (port int, err error) {
 	return
 }
 
-func hotkeysFn(ctx context.Context, fs afero.Fs) func() {
+func hotkeysFn(ctx context.Context, murl string) func() {
 	return func() {
 		hk := hotkey.New([]hotkey.Modifier{hotkey.Mod4, hotkey.ModShift}, hotkey.KeyD)
 		err := hk.Register()
@@ -300,11 +300,7 @@ func hotkeysFn(ctx context.Context, fs afero.Fs) func() {
 				log.Logger.Info("hotkey: Keydown", "key", hk)
 			case <-hk.Keyup():
 				log.Logger.Info("hotkey: Keyup", "key", hk)
-				if !isGameRunning.Load() {
-					err = SendMessage(ctx, fs, "Quack!")
-				} else {
-					err = SendMessage(ctx, fs, "")
-				}
+				err = postToGame(murl+"/toggle", nil)
 				if err != nil {
 					log.Logger.Error("hotkey: failed to send message", "error", err)
 					return

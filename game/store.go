@@ -40,6 +40,9 @@ type State struct {
 	WokeUpAt      time.Time     `json:"-"`
 	WokeUpTimeout time.Duration `json:"woke_up_timeout"`
 
+	// Display is to force displaying even without a message
+	Display bool `json:"-"`
+
 	Scale float64 `json:"scale"`
 }
 
@@ -146,6 +149,13 @@ func (s *Store) GetMessage() (Message, bool) {
 	return state.Messages[0], true
 }
 
+func (s *Store) GetDisplay() bool {
+	s.mxStore.Lock()
+	defer s.mxStore.Unlock()
+
+	return s.GetState().Display
+}
+
 func (s *Store) Reduce(state State, act *Action) State {
 	switch act.Type {
 	case TPS:
@@ -179,6 +189,20 @@ func (s *Store) Reduce(state State, act *Action) State {
 		state.Messages = append(state.Messages, Message{
 			Text: truncateMessage(act.AddMessage.Message, state.MessageMaxLineCharacters, state.MessageMaxLines),
 		})
+	case Toggle:
+		s.mxStore.Lock()
+		defer s.mxStore.Unlock()
+
+		if time.Now().Sub(state.WokeUpAt) > state.WokeUpTimeout {
+			// If it's sleeping we woke it up
+			state.WokeUpAt = time.Now()
+			state.Display = true
+		} else {
+			// If it's woken we make it sleep
+			state.WokeUpAt = time.Time{}
+			state.Display = false
+			state.Messages = nil
+		}
 	}
 
 	return state
