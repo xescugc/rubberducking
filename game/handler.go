@@ -15,6 +15,7 @@ func (g *Game) startHttpServer(p string, v bool) {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/messages", g.createMessageHandler).Methods(http.MethodPost)
+	r.HandleFunc("/toggle", g.toggleHandler).Methods(http.MethodPost)
 
 	hmux := http.NewServeMux()
 	hmux.Handle("/", r)
@@ -43,4 +44,8 @@ func (g *Game) createMessageHandler(w http.ResponseWriter, r *http.Request) {
 	Logger.Info("Sending message to manager", "msg", b.Message)
 
 	g.AD.AddMessage(b.Message)
+}
+
+func (g *Game) toggleHandler(w http.ResponseWriter, r *http.Request) {
+	g.AD.Toggle()
 }

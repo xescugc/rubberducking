@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net/http"
 	"os"
 
 	"github.com/spf13/afero"
@@ -39,24 +37,9 @@ func SendMessage(ctx context.Context, fs afero.Fs, msg string) error {
 		return err
 	}
 
-	resp, err := http.NewRequest(http.MethodPost, data.ManagerURL+"/messages", bytes.NewBuffer(b))
+	err = postToGame(data.ManagerURL+"/messages", bytes.NewBuffer(b))
 	if err != nil {
 		return err
-	}
-
-	response, err := http.DefaultClient.Do(resp)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		var eb ErrorResponse
-		err := json.NewDecoder(response.Body).Decode(&eb)
-		if err != nil {
-			return err
-		}
-		return errors.New(eb.Error)
 	}
 
 	return nil

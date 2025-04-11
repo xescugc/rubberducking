@@ -30,3 +30,8 @@ func (ac *ActionDispatcher) TPS() {
 	tpsa := NewTPS()
 	ac.Dispatch(tpsa)
 }
+
+func (ac *ActionDispatcher) Toggle() {
+	ta := NewToggle()
+	ac.Dispatch(ta)
+}
