@@ -37,5 +37,5 @@ send-message: ## Sends a message from env M
 	@go run . send-message $(M)
 
 .PHONY: build-game
-install: ## Installs the RubberDucking
+install: build-game ## Installs the RubberDucking
 	@go install .
