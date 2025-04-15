@@ -1,40 +1,16 @@
 package main
 
 import (
-	"bytes"
 	"image"
-	"os"
 	"time"
 
 	"github.com/ebitenui/ebitenui"
 	"github.com/ebitenui/ebitenui/widget"
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/solarlune/resolv"
 	"github.com/xescugc/go-flux/v2"
-	"github.com/xescugc/rubberducking/assets"
-	"github.com/xescugc/rubberducking/log"
 )
-
-var (
-	duckImg         image.Image
-	speechBallonImg image.Image
-)
-
-func init() {
-	di, _, err := image.Decode(bytes.NewReader(assets.Duck_PNG))
-	if err != nil {
-		log.Logger.Error("Error on Decoding Duck_PNG", "err", err)
-		os.Exit(1)
-	}
-	duckImg = ebiten.NewImageFromImage(ebiten.NewImageFromImage(di).SubImage(image.Rect(0, 0, 16, 16)))
-
-	sbi, _, err := image.Decode(bytes.NewReader(assets.SpeechBallon_PNG))
-	if err != nil {
-		log.Logger.Error("Error on Decoding SpeechBallon_PNG", "err", err)
-		os.Exit(1)
-	}
-	speechBallonImg = ebiten.NewImageFromImage(sbi)
-}
 
 type Game struct {
 	Store *Store
@@ -45,6 +21,9 @@ type Game struct {
 	speechBallonW   *widget.Window
 	speechBallonRC  *widget.Container
 	speechBallonTxt *widget.Text
+
+	menuW         *widget.Window
+	focusCheckbox *widget.Button
 }
 
 func NewGame(d *flux.Dispatcher[*Action], s *Store, ad *ActionDispatcher) *Game {
@@ -61,7 +40,7 @@ func NewGame(d *flux.Dispatcher[*Action], s *Store, ad *ActionDispatcher) *Game 
 func (g *Game) Update() error {
 	state := g.Store.GetState()
 
-	if time.Now().Sub(state.WokeUpAt) > state.WokeUpTimeout {
+	if time.Now().Sub(state.WokeUpAt) > state.WokeUpTimeout && !state.MenuOpen {
 		return ebiten.Termination
 	}
 
@@ -71,10 +50,23 @@ func (g *Game) Update() error {
 
 	mx, my := ebiten.CursorPosition()
 	mr := resolv.NewRectangle(float64(mx), float64(my), 1, 1)
-	if mr.IsContainedBy(state.Avatar) {
+	if mr.IsContainedBy(state.Avatar) || state.MenuOpen {
+		//if mr.IsContainedBy(state.Avatar) {
 		if ebiten.IsWindowMousePassthrough() {
 			ebiten.SetWindowMousePassthrough(false)
 		}
+		//} else if state.MenuOpen {
+		//rec := g.menuW.GetContainer().GetWidget().Rect
+		//wres := resolv.NewRectangleFromTopLeft(float64(rec.Min.X), float64(rec.Min.Y), float64(rec.Max.X-rec.Min.X), float64(rec.Max.Y-rec.Min.Y))
+		//if mr.IsContainedBy(wres) {
+		//if ebiten.IsWindowMousePassthrough() {
+		//ebiten.SetWindowMousePassthrough(false)
+		//}
+		//} else {
+		//if !ebiten.IsWindowMousePassthrough() {
+		//ebiten.SetWindowMousePassthrough(true)
+		//}
+		//}
 	} else {
 		if !ebiten.IsWindowMousePassthrough() {
 			ebiten.SetWindowMousePassthrough(true)
@@ -84,6 +76,16 @@ func (g *Game) Update() error {
 		if mr.IsContainedBy(state.Avatar) {
 			g.AD.DragAvatar(mx, my)
 		}
+	}
+
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+		if mr.IsContainedBy(state.Avatar) {
+			g.AD.MenuOpen(true)
+		}
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) && state.MenuOpen {
+		g.AD.MenuOpen(false)
 	}
 
 	g.ui.Update()
@@ -102,11 +104,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	op := &ebiten.DrawImageOptions{}
 	op.GeoM.Scale(state.Scale, state.Scale)
 	op.GeoM.Translate(state.Avatar.Bounds().Min.X, state.Avatar.Bounds().Min.Y)
-	screen.DrawImage(duckImg.(*ebiten.Image), op)
+	screen.DrawImage(Images.Get(DuckKey), op)
 
 	if m, ok := g.Store.GetMessage(); ok {
 		g.speechBallonTxt.Label = m.Text
-		g.speechBallonRC.BackgroundImage = LoadImageNineSlice(ScaleImage(speechBallonImg.(*ebiten.Image), int(state.Scale)), 1, 1)
+		g.speechBallonRC.BackgroundImage = LoadImageNineSlice(SpeechBallonKey, int(state.Scale), 1, 1)
 
 		b := state.Avatar.Bounds()
 		msw, msh := ebiten.Monitor().Size()
@@ -140,7 +142,34 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.ui.AddWindow(g.speechBallonW)
 	} else {
 		if g.ui.IsWindowOpen(g.speechBallonW) {
-			g.speechBallonW.Close()
+			g.menuW.Close()
+		}
+	}
+
+	if state.MenuOpen {
+		msw, msh := ebiten.Monitor().Size()
+
+		//Get the preferred size of the content
+		x, y := g.menuW.Contents.PreferredSize()
+
+		//Create a rect with the preferred size of the content
+		r := image.Rect(0, 0, x, y)
+		//Use the Add method to move the window to the specified point
+		r = r.Add(image.Point{(msw / 2) - x/2, (msh / 2) - y/2})
+		//Set the windows location to the rect.
+		g.menuW.SetLocation(r)
+		//Add the window to the UI.
+		//Note: If the window is already added, this will just move the window and not add a duplicate.
+		g.ui.AddWindow(g.menuW)
+
+		if state.FocusMode {
+			g.focusCheckbox.SetState(widget.WidgetChecked)
+		} else {
+			g.focusCheckbox.SetState(widget.WidgetUnchecked)
+		}
+	} else {
+		if g.ui.IsWindowOpen(g.menuW) {
+			g.menuW.Close()
 		}
 	}
 
@@ -161,6 +190,11 @@ func (g *Game) buildUI() {
 
 	g.ui = ui
 
+	g.buildSpeechBallonW()
+	g.buildMenuW()
+}
+
+func (g *Game) buildSpeechBallonW() {
 	speechBallonAC := widget.NewContainer(
 		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
 	)
@@ -176,7 +210,7 @@ func (g *Game) buildUI() {
 			),
 			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
 		)),
-		widget.ContainerOpts.BackgroundImage(LoadImageNineSlice(speechBallonImg.(*ebiten.Image), 1, 1)),
+		widget.ContainerOpts.BackgroundImage(LoadImageNineSlice(SpeechBallonKey, 1, 1, 1)),
 		widget.ContainerOpts.WidgetOpts(),
 	)
 	speechBallonTxt := widget.NewText(
@@ -201,4 +235,222 @@ func (g *Game) buildUI() {
 	g.speechBallonW = speechBallonW
 	g.speechBallonTxt = speechBallonTxt
 	g.speechBallonRC = speechBallonRC
+}
+
+func (g *Game) buildMenuW() {
+	menuAC := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewAnchorLayout()),
+	)
+	menuRC := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewRowLayout(
+			widget.RowLayoutOpts.Padding(
+				widget.Insets{
+					Top:    5,
+					Bottom: 40,
+					Right:  5,
+					Left:   5,
+				},
+			),
+			widget.RowLayoutOpts.Direction(widget.DirectionVertical),
+		)),
+		widget.ContainerOpts.BackgroundImage(LoadImageNineSlice(FrameBGKey, 5, 1, 1)),
+	)
+	menuAC.AddChild(menuRC)
+
+	tabsGC := widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewGridLayout(
+			widget.GridLayoutOpts.Columns(3),
+			widget.GridLayoutOpts.Spacing(0, 0),
+			widget.GridLayoutOpts.DefaultStretch(true, true),
+		)),
+		widget.ContainerOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Position: widget.RowLayoutPositionCenter,
+				Stretch:  true,
+			}),
+		),
+	)
+
+	var tab1BodyRC, tab2BodyRC, tab3BodyRC *widget.Container
+
+	tabTextInsets := widget.Insets{
+		Left:   20,
+		Right:  20,
+		Top:    10,
+		Bottom: 22,
+	}
+
+	tab1Btn := widget.NewButton(
+		// specify the images to sue
+		widget.ButtonOpts.Image(LeftTabButtonResource()),
+
+		// specify the button's text, the font face, and the color
+		widget.ButtonOpts.Text("Actions", Font30, ButtonTextColor()),
+
+		// specify that the button's text needs some padding for correct display
+		widget.ButtonOpts.TextPadding(tabTextInsets),
+		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+			tab1BodyRC.GetWidget().Visibility = widget.Visibility_Show
+			tab2BodyRC.GetWidget().Visibility = widget.Visibility_Hide
+			tab3BodyRC.GetWidget().Visibility = widget.Visibility_Hide
+		}),
+	)
+	tab2Btn := widget.NewButton(
+		// specify the images to sue
+		widget.ButtonOpts.Image(CenterRightTabButtonResource()),
+
+		// specify the button's text, the font face, and the color
+		widget.ButtonOpts.Text("Config", Font30, ButtonTextColor()),
+
+		// specify that the button's text needs some padding for correct display
+		widget.ButtonOpts.TextPadding(tabTextInsets),
+		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+			tab1BodyRC.GetWidget().Visibility = widget.Visibility_Hide
+			tab2BodyRC.GetWidget().Visibility = widget.Visibility_Show
+			tab3BodyRC.GetWidget().Visibility = widget.Visibility_Hide
+		}),
+	)
+	tab3Btn := widget.NewButton(
+		// specify the images to sue
+		widget.ButtonOpts.Image(RightTabButtonResource()),
+
+		// specify the button's text, the font face, and the color
+		widget.ButtonOpts.Text("About", Font30, ButtonTextColor()),
+
+		// specify that the button's text needs some padding for correct display
+		widget.ButtonOpts.TextPadding(tabTextInsets),
+		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+			tab1BodyRC.GetWidget().Visibility = widget.Visibility_Hide
+			tab2BodyRC.GetWidget().Visibility = widget.Visibility_Hide
+			tab3BodyRC.GetWidget().Visibility = widget.Visibility_Show
+		}),
+	)
+	tabsGC.AddChild(
+		tab1Btn,
+		tab2Btn,
+		tab3Btn,
+	)
+
+	widget.NewRadioGroup(
+		widget.RadioGroupOpts.Elements(
+			tab1Btn,
+			tab2Btn,
+			tab3Btn,
+		),
+	)
+	tabBodyInsets := widget.Insets{
+		Left:   25,
+		Right:  25,
+		Top:    25,
+		Bottom: 25,
+	}
+
+	tab1BodyRC = widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewGridLayout(
+			widget.GridLayoutOpts.Columns(2),
+			widget.GridLayoutOpts.Spacing(0, 0),
+			widget.GridLayoutOpts.Stretch([]bool{true, false}, []bool{false}),
+			widget.GridLayoutOpts.Padding(tabBodyInsets),
+		)),
+		widget.ContainerOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Position: widget.RowLayoutPositionCenter,
+				Stretch:  true,
+			}),
+		),
+	)
+
+	focusLabel := widget.NewText(
+		widget.TextOpts.Position(widget.TextPositionStart, widget.TextPositionCenter),
+		widget.TextOpts.Text("Focus mode", Font20, Black),
+	)
+	focusCheckbox := widget.NewButton(
+		// specify the images to sue
+		widget.ButtonOpts.Image(CheckboxButtonResource()),
+		widget.ButtonOpts.ToggleMode(),
+		widget.ButtonOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.GridLayoutData{
+				MaxWidth:  45,
+				MaxHeight: 35,
+			}),
+		),
+		widget.ButtonOpts.ClickedHandler(func(args *widget.ButtonClickedEventArgs) {
+			if args.Button.State() == widget.WidgetUnchecked {
+				g.AD.SetFocusMode(false)
+			} else {
+				g.AD.SetFocusMode(true)
+			}
+		}),
+	)
+
+	g.focusCheckbox = focusCheckbox
+
+	tab1BodyRC.AddChild(
+		focusLabel, focusCheckbox,
+	)
+
+	tab2BodyRC = widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewGridLayout(
+			widget.GridLayoutOpts.Columns(2),
+			widget.GridLayoutOpts.Spacing(0, 0),
+			widget.GridLayoutOpts.Stretch([]bool{true, false}, []bool{false}),
+			widget.GridLayoutOpts.Padding(tabBodyInsets),
+		)),
+		widget.ContainerOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Position: widget.RowLayoutPositionCenter,
+				Stretch:  true,
+			}),
+			func(w *widget.Widget) {
+				w.Visibility = widget.Visibility_Hide
+			},
+		),
+	)
+	tab2Txt := widget.NewText(
+		widget.TextOpts.Text("Config", Font20, Black),
+		widget.TextOpts.Position(widget.TextPositionStart, widget.TextPositionStart),
+	)
+	tab2BodyRC.AddChild(tab2Txt)
+
+	tab3BodyRC = widget.NewContainer(
+		widget.ContainerOpts.Layout(widget.NewGridLayout(
+			widget.GridLayoutOpts.Columns(2),
+			widget.GridLayoutOpts.Spacing(0, 0),
+			widget.GridLayoutOpts.Stretch([]bool{true, false}, []bool{false}),
+			widget.GridLayoutOpts.Padding(tabBodyInsets),
+		)),
+		widget.ContainerOpts.WidgetOpts(
+			widget.WidgetOpts.LayoutData(widget.RowLayoutData{
+				Position: widget.RowLayoutPositionCenter,
+				Stretch:  true,
+			}),
+			func(w *widget.Widget) {
+				w.Visibility = widget.Visibility_Hide
+			},
+		),
+	)
+	tab3Txt := widget.NewText(
+		widget.TextOpts.Text("About", Font20, Black),
+		widget.TextOpts.Position(widget.TextPositionStart, widget.TextPositionStart),
+	)
+	tab3BodyRC.AddChild(tab3Txt)
+
+	menuRC.AddChild(
+		tabsGC,
+		tab1BodyRC,
+		tab2BodyRC,
+		tab3BodyRC,
+	)
+
+	menuW := widget.NewWindow(
+		widget.WindowOpts.Contents(menuAC),
+		widget.WindowOpts.Modal(),
+		widget.WindowOpts.CloseMode(widget.CLICK_OUT),
+
+		widget.WindowOpts.ClosedHandler(func(args *widget.WindowClosedEventArgs) {
+			g.AD.MenuOpen(false)
+		}),
+	)
+
+	g.menuW = menuW
 }

@@ -28,7 +28,7 @@ type Store struct {
 type State struct {
 	Avatar *resolv.ConvexPolygon `json:"-"`
 
-	Messages           []Message `json:"-"`
+	Messages           []Message `json:"messages,omitempty"`
 	MessageDisplayedAt time.Time `json:"-"`
 
 	MessageTimeout time.Duration `json:"message_timeout"`
@@ -40,14 +40,17 @@ type State struct {
 	WokeUpAt      time.Time     `json:"-"`
 	WokeUpTimeout time.Duration `json:"woke_up_timeout"`
 
+	FocusMode bool `json:"focus_mode"`
+
 	// Display is to force displaying even without a message
-	Display bool `json:"-"`
+	Display  bool `json:"-"`
+	MenuOpen bool `json:"-"`
 
 	Scale float64 `json:"scale"`
 }
 
 type Message struct {
-	Text string
+	Text string `json:"text"`
 }
 
 type AvatarJSON struct {
@@ -102,7 +105,7 @@ func NewStore(d *flux.Dispatcher[*Action], fs afero.Fs, mto, wuto time.Duration)
 	if state == nil {
 		Logger.Info("No state file found, initializing a new one")
 		msw, msh := ebiten.Monitor().Size()
-		isw, ish := duckImg.(*ebiten.Image).Size()
+		isw, ish := Images.Get(DuckKey).Size()
 
 		scale := 10
 		a := resolv.NewRectangleFromTopLeft(
@@ -142,7 +145,7 @@ func (s *Store) GetMessage() (Message, bool) {
 	defer s.mxStore.Unlock()
 
 	state := s.GetState()
-	if len(state.Messages) == 0 {
+	if len(state.Messages) == 0 || state.FocusMode {
 		return Message{}, false
 	}
 
@@ -163,7 +166,7 @@ func (s *Store) Reduce(state State, act *Action) State {
 		defer s.mxStore.Unlock()
 
 		// Remove the message if it has been display long enough
-		if len(state.Messages) > 0 && time.Now().Sub(state.MessageDisplayedAt) > state.MessageTimeout {
+		if !state.FocusMode && len(state.Messages) > 0 && time.Now().Sub(state.MessageDisplayedAt) > state.MessageTimeout {
 			state.Messages = state.Messages[1:]
 			if len(state.Messages) != 0 {
 				state.MessageDisplayedAt = time.Now()
@@ -202,6 +205,23 @@ func (s *Store) Reduce(state State, act *Action) State {
 			state.WokeUpAt = time.Time{}
 			state.Display = false
 			state.Messages = nil
+		}
+	case MenuOpen:
+		s.mxStore.Lock()
+		defer s.mxStore.Unlock()
+
+		state.MenuOpen = act.MenuOpen.Open
+
+	case SetFocusMode:
+		s.mxStore.Lock()
+		defer s.mxStore.Unlock()
+
+		state.FocusMode = act.SetFocusMode.Mode
+		if state.FocusMode {
+			state.MessageDisplayedAt = time.Time{}
+		} else if len(state.Messages) != 0 {
+			state.MessageDisplayedAt = time.Now()
+			state.WokeUpAt = time.Now()
 		}
 	}
 

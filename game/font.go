@@ -11,8 +11,10 @@ import (
 
 var (
 	Font20 text.Face
+	Font30 text.Face
 
 	Black = color.RGBA{46, 34, 47, 255}
+	White = color.RGBA{255, 255, 255, 255}
 )
 
 func init() {
@@ -25,5 +27,9 @@ func init() {
 	Font20 = &text.GoTextFace{
 		Source: mtt,
 		Size:   20,
+	}
+	Font30 = &text.GoTextFace{
+		Source: mtt,
+		Size:   30,
 	}
 }

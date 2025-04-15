@@ -9,15 +9,19 @@ const (
 	AddMessage
 	TPS
 	Toggle
+	MenuOpen
+	SetFocusMode
 )
 
 type Action struct {
 	Type Type
 
-	DragAvatar DragAvatarPayload
-	AddMessage AddMessagePayload
-	TPS        TPSPayload
-	Toggle     TogglePayload
+	DragAvatar   DragAvatarPayload
+	AddMessage   AddMessagePayload
+	TPS          TPSPayload
+	Toggle       TogglePayload
+	MenuOpen     MenuOpenPayload
+	SetFocusMode SetFocusModePayload
 }
 
 type DragAvatarPayload struct {
@@ -61,5 +65,31 @@ type TogglePayload struct{}
 func NewToggle() *Action {
 	return &Action{
 		Type: Toggle,
+	}
+}
+
+type MenuOpenPayload struct {
+	Open bool
+}
+
+func NewMenuOpen(o bool) *Action {
+	return &Action{
+		Type: MenuOpen,
+		MenuOpen: MenuOpenPayload{
+			Open: o,
+		},
+	}
+}
+
+type SetFocusModePayload struct {
+	Mode bool
+}
+
+func NewSetFocusMode(f bool) *Action {
+	return &Action{
+		Type: SetFocusMode,
+		SetFocusMode: SetFocusModePayload{
+			Mode: f,
+		},
 	}
 }

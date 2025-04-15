@@ -35,3 +35,13 @@ func (ac *ActionDispatcher) Toggle() {
 	ta := NewToggle()
 	ac.Dispatch(ta)
 }
+
+func (ac *ActionDispatcher) MenuOpen(o bool) {
+	moa := NewMenuOpen(o)
+	ac.Dispatch(moa)
+}
+
+func (ac *ActionDispatcher) SetFocusMode(f bool) {
+	fma := NewSetFocusMode(f)
+	ac.Dispatch(fma)
+}
